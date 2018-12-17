@@ -38,6 +38,7 @@ ARCH=`uname`
 INTERPOSER_SO_PATH=/tmp/suppose_its_$VERSION.so
 INTERPOSER_C_PATH=/tmp/suppose_its_$VERSION.c
 GETTIMEOFDAY_SIGNATURE="int gettimeofday(struct timeval *tp, struct timezone *tzp) "
+CLOCK_GETTIME_SIGNATURE="int clock_gettime(clockid_t clk_id, struct timespec *tp) "
 ENVIRONMENT="export LD_PRELOAD=$INTERPOSER_SO_PATH && export DATE_FILE=$1"
 
 if echo $ARCH | grep 'BSD' >> /dev/null
@@ -92,6 +93,18 @@ $GETTIMEOFDAY_SIGNATURE {
      return (((int (*)()) dlsym(RTLD_NEXT, "gettimeofday"))(tp,tzp));
   fgets(timestamp_str, 11, file);
   return parse_timestamp(timestamp_str, tp);
+}
+
+
+$CLOCK_GETTIME_SIGNATURE {
+  char timestamp_str[11];
+  FILE *file = ts_open();
+  if (!file)
+     return (((int (*)()) dlsym(RTLD_NEXT, "clock_gettime"))(clk_id,tp));
+  fgets(timestamp_str, 11, file);
+  (*tp).tv_sec = atoi(timestamp_str);
+  (*tp).tv_nsec = 0;
+  return 0;
 }
 
 __EOF__
